@@ -1,16 +1,16 @@
-const { date } = require("assert-plus");
 const Web3 = require("web3"); 
 const con = require("./databse");
-const web3 = new Web3(new Web3.providers.HttpProvider("https://kovan.infura.io/v3/4c1283913d0f45d6a39301298617ae57"))
-// const con = require("./databse")
+const {infuraLink} = require("./config/infuraLink")
+const web3 = new Web3(new Web3.providers.HttpProvider(infuraLink))
 const EthereumTx = require('ethereumjs-tx').Transaction;
+const {senderData} = require('./config/sender_data')
+const senderAddress = senderData.senderAddress
+const privateKey = senderData.privateKey
+let recAddress = "0x0dc7f556d03882527dd92371c74b3739c5553ba2"
+// recAddress = "0x1a7a49dd847521daef30ea3de3c1f74771e5c875"
 
 let status= " ";
 let process = 0;
-senderAddress="0x6343D7675ef45d12ED09e66ec45CD12BC5f6423d"
-privateKey="d4c2bb1c239de7b359e4246f1cc8a728141a6f22af31a25937f24752d2256add"
-recAddress = "0x0dc7f556d03882527dd92371c74b3739c5553ba2"
-// recAddress = "0x1a7a49dd847521daef30ea3de3c1f74771e5c875"
 
 
 async function sendEthereum(senderAdddress,privateKey, recAddress, amount){
@@ -59,7 +59,6 @@ async function sign_transaction(senderAddress ,privateKey, recAddress, amount,no
         else{
             if(result[0].status="pending"){
                 nonce = result[0].id+1;
-                console.log(nonce)
             }
             else{
                 nonce = nonce +1;
@@ -101,8 +100,3 @@ async function deploy_transaction(){
 
 deploy_transaction()
 sendEthereum(senderAddress,privateKey,recAddress,00)
-
-// web3.eth.getTransactionCount(senderAddress).then(console.log);
-
-// date : new Date(Date.now)
-console.log(Math.floor(Date.now() / 1000))
