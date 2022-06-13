@@ -1,32 +1,27 @@
+// ----------------------------------------------------------Dependencies----------------------------------------------------------------------------------- //
 const Web3 = require("web3"); 
 const con = require("./databse");
-const {infuraLink} = require("./config/infuraLink")
+const {senderData , infuraLink} = require('./config');
 const web3 = new Web3(new Web3.providers.HttpProvider(infuraLink))
-// const EthereumTx = require('ethereumjs-tx').Transaction;
-const {senderData} = require('./config/sender_data');
+// ----------------------------------------------------------Sender & receiver data----------------------------------------------------------------------------------- //
+
 const senderAddress = senderData.senderAddress
 const privateKey = senderData.privateKey
+let recAddress = "0x0dc7f556d03882527dd92371c74b3739c5553ba2"
 
 let status= " ";
 let process = 0;
 
+// -----------------------send ethereum function---------------------------------- //
 
 async function sendEthereum(senderAdddress,privateKey, recAddress, amount){
     var nonce = await web3.eth.getTransactionCount(senderAddress) + 1;
     console.log(nonce);
-    web3.eth.getBalance(senderAddress,async(err,result) => {
-        if(err){
-            return err;
-        }
-        let balance = web3.utils.fromWei(result,'ether');
-        console.log(balance + " ETH");
-        if(balance<amount){
-            console.log("insufficient balance");
-            return "balance insufficient";
-        }
         sign_transaction(senderAdddress,privateKey, recAddress, amount,nonce)
-    });
-}
+    };
+
+
+// -----------------------signing ethereum function---------------------------------- //
 
 async function sign_transaction(senderAddress ,privateKey, recAddress, amount,nonce){
     con.query("Select id,status from transaction order by id desc limit 1",async function(err,result){
@@ -72,13 +67,14 @@ async function sign_transaction(senderAddress ,privateKey, recAddress, amount,no
              con.query("Insert into transaction(id, from_add, to_add, amount, status, process, transaction_hash, raw_transaction, timestamp) values(?,?,?,?,?,?,?,?,?)",
                 [nonce, senderAddress, recAddress, amount, status, process,createTransaction.transactionHash,createTransaction.rawTransaction,Math.floor(Date.now() / 1000)]);
             console.log(createTransaction);
-            // createReceipt = await web3.eth.sendSignedTransaction(createTransaction.rawTransaction)
-             return createTransaction;
+            return createTransaction;
         }
     });
 }
 
-async function deploy_transaction(){
+// -----------------------broadcasting ethereum function---------------------------------- //
+
+async function broadcast_transaction(){
     con.query("Update transaction set process = 1 where process = 0")
     con.query("Select * from transaction where status = 'pending' || status = 'failed'",async function(err, result){
         if(err){
@@ -90,6 +86,15 @@ async function deploy_transaction(){
         else{
             console.log(result)
             for(let i=0;i<result.length;i++){
+                let balance = await web3.eth.getBalance(senderAddress)
+                balance_Wei = web3.utils.fromWei(balance.toString(),'ether');
+                console.log(balance_Wei + " ETH");
+                if(balance_Wei<result[i].amount){
+                    console.log("insufficient balance");
+                    con.query("Update transaction set timestamp = ? , status = 'Failed - Insufficient Balance' , process = 0 where id = ?"
+                    ,[Math.floor(Date.now() / 1000),result[i].id]);
+                    continue
+                }
                 let createReceipt
                 try {
                     createReceipt = await web3.eth.sendSignedTransaction(result[i].raw_transaction)
@@ -109,10 +114,8 @@ async function deploy_transaction(){
     })
 }
 
-let recAddress = "0x0dc7f556d03882527dd92371c74b3739c5553ba2"
-// recAddress = "0x1a7a49dd847521daef30ea3de3c1f74771e5c875"
 
 
 
-deploy_transaction()
-sendEthereum(senderAddress,privateKey,recAddress,00)
+broadcast_transaction(senderAddress)
+// sendEthereum(senderAddress,privateKey,recAddress,0)
